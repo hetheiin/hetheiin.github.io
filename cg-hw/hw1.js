@@ -49,10 +49,8 @@ render();
 // Resize canvas width, height
 function resize() {
     minWidth = window.innerWidth < window.innerHeight ? window.innerWidth : window.innerHeight;
-    if(minWidth < 500) {
-        canvas.width = minWidth;
-        canvas.height = minWidth;
-    }
+    canvas.width = minWidth;
+    canvas.height = minWidth;
 }
 
 // Resize viewport when window size changes
