@@ -349,3 +349,196 @@ export function genConeLight({ location, destination, radius }, world, scene) {
         light: spotLight
     };
 }
+
+export function genPoster1({ location, scale, rotation }, world, scene) {
+    const textureLoader = new THREE.TextureLoader();
+    const posterTexture = textureLoader.load('assets/poster1.jpg'); // 네 포스터 이미지 경로
+
+    const posterMaterial = new THREE.MeshBasicMaterial({ map: posterTexture });
+    const posterGeometry = new THREE.PlaneGeometry(2, 3);
+
+    const poster = new THREE.Mesh(posterGeometry, posterMaterial);
+
+    poster.scale.set(scale, scale);
+    poster.rotation.set(rotation.x, rotation.y, rotation.z);
+
+    poster.position.set(location.x, location.y, location.z);
+    scene.add(poster);
+
+    return {mesh:poster};
+}
+
+export function genCobblestone({location, size, rotation}, world, scene) {
+    const texture = textureLoader.load('assets/cobblestone.png');
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+
+    const res =  createCube({
+            location: location,
+            size: size,
+            rotation: rotation,
+            isFixed: true,
+            texture: texture,
+            color: defaultColor,
+            mass: 0},
+        world, scene);
+    return {body: res.body, mesh: res.mesh, isFixed: true};
+}
+
+export function genDirt({location, size, rotation}, world, scene) {
+    const texture = textureLoader.load('assets/dirt.png');
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+
+    const res =  createCube({
+            location: location,
+            size: size,
+            rotation: rotation,
+            isFixed: true,
+            texture: texture,
+            color: defaultColor,
+            mass: 0},
+        world, scene);
+    return {body: res.body, mesh: res.mesh, isFixed: true};
+}
+
+export function genGrass({ location, size, rotation }, world, scene) {
+    const texTop = textureLoader.load('assets/grass_block_top.png');
+    const texSide = textureLoader.load('assets/grass_block_side.png');
+    const texBottom = textureLoader.load('assets/dirt.png');
+
+    // 픽셀 아트처럼 보이게 설정
+    for (const tex of [texTop, texSide, texBottom]) {
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+    }
+
+    // 6면에 대한 재질 설정: [right, left, top, bottom, front, back]
+    const materials = [
+        new THREE.MeshLambertMaterial({ map: texSide }),  // right
+        new THREE.MeshLambertMaterial({ map: texSide }),  // left
+        new THREE.MeshLambertMaterial({ map: texTop, color: 0x55cc55 }),   // top
+        new THREE.MeshLambertMaterial({ map: texBottom }),// bottom
+        new THREE.MeshLambertMaterial({ map: texSide }),  // front
+        new THREE.MeshLambertMaterial({ map: texSide }),  // back
+    ];
+
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    const mesh = new THREE.Mesh(geometry, materials);
+    mesh.position.set(location.x, location.y, location.z);
+    mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+
+    scene.add(mesh);
+
+    // 물리 바디는 createCube로 생성
+    const res = createCube({
+        location,
+        size,
+        rotation,
+        isFixed: true,
+        texture: null,  // 실제 텍스처는 우리가 수동으로 입혔으므로 null
+        color: defaultColor,
+        mass: 0
+    }, world, scene);
+
+    // 기본 mesh를 우리가 만든 것으로 교체
+    res.mesh.geometry = geometry;
+    res.mesh.material = materials;
+
+    return {
+        body: res.body,
+        mesh: res.mesh,
+        isFixed: true
+    };
+}
+
+export function genCherryLog({ location, size, rotation }, world, scene) {
+    const texTop = textureLoader.load('assets/cherry_log_top.png');
+    const texSide = textureLoader.load('assets/cherry_log.png');
+
+    // 픽셀 아트처럼 보이게 설정
+    for (const tex of [texTop, texSide]) {
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+    }
+
+    // 6면에 대한 재질 설정: [right, left, top, bottom, front, back]
+    const materials = [
+        new THREE.MeshLambertMaterial({ map: texSide }),  // right
+        new THREE.MeshLambertMaterial({ map: texSide }),  // left
+        new THREE.MeshLambertMaterial({ map: texTop }),   // top
+        new THREE.MeshLambertMaterial({ map: texTop }),// bottom
+        new THREE.MeshLambertMaterial({ map: texSide }),  // front
+        new THREE.MeshLambertMaterial({ map: texSide }),  // back
+    ];
+
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    const mesh = new THREE.Mesh(geometry, materials);
+    mesh.position.set(location.x, location.y, location.z);
+    mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+
+    scene.add(mesh);
+
+    // 물리 바디는 createCube로 생성
+    const res = createCube({
+        location,
+        size,
+        rotation,
+        isFixed: true,
+        texture: null,  // 실제 텍스처는 우리가 수동으로 입혔으므로 null
+        color: defaultColor,
+        mass: 0
+    }, world, scene);
+
+    // 기본 mesh를 우리가 만든 것으로 교체
+    res.mesh.geometry = geometry;
+    res.mesh.material = materials;
+
+    return {
+        body: res.body,
+        mesh: res.mesh,
+        isFixed: true
+    };
+}
+
+export function genCherryLeaf({location, size, rotation}, world, scene) {
+    const texture = textureLoader.load('assets/cherry_leaves.png');
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+
+    const res =  createCube({
+            location: location,
+            size: size,
+            rotation: rotation,
+            isFixed: true,
+            texture: texture,
+            color: defaultColor,
+            mass: 0},
+        world, scene);
+
+    res.mesh.material = new THREE.MeshLambertMaterial({
+        map: texture,
+        transparent: true,
+        alphaTest: 0.5,
+        side: THREE.DoubleSide,
+    });
+
+    return {body: res.body, mesh: res.mesh, isFixed: true};
+}
+
+export function genCherryPlank({location, size, rotation}, world, scene) {
+    const texture = textureLoader.load('assets/cherry_planks.png');
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+
+    const res =  createCube({
+            location: location,
+            size: size,
+            rotation: rotation,
+            isFixed: true,
+            texture: texture,
+            color: defaultColor,
+            mass: 0},
+        world, scene);
+    return {body: res.body, mesh: res.mesh, isFixed: true};
+}
