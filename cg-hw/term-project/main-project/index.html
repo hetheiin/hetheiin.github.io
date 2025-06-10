@@ -3,83 +3,42 @@
 <head>
     <meta charset="utf-8">
     <title>cannon.js + three.js physics shooter</title>
-    <style>
-        html, body {
-            width: 100%;
-            height: 100%;
-        }
-
-        body {
-            background-color: #ffffff;
-            margin: 0;
-            overflow: hidden;
-            font-family: arial;
-        }
-
-        #blocker {
-
-            position: absolute;
-
-            width: 100%;
-            height: 100%;
-
-            background-color: rgba(0,0,0,0.5);
-
-        }
-
-        #instructions {
-
-            width: 100%;
-            height: 100%;
-
-            display: -webkit-box;
-            display: -moz-box;
-            display: box;
-
-            -webkit-box-orient: horizontal;
-            -moz-box-orient: horizontal;
-            box-orient: horizontal;
-
-            -webkit-box-pack: center;
-            -moz-box-pack: center;
-            box-pack: center;
-
-            -webkit-box-align: center;
-            -moz-box-align: center;
-            box-align: center;
-
-            color: #ffffff;
-            text-align: center;
-
-            cursor: pointer;
-
-        }
-        #crosshair {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            width: 32px;     /* 이미지 크기 */
-            margin-left: -16px; /* 이미지의 반만큼 이동 */
-            margin-top: -23.2px;
-            pointer-events: none; /* 클릭 방지 */
-            z-index: 1000;
-            opacity: 0.8;    /* 살짝 투명 (선택) */
-        }
-
-    </style>
+    <link rel="stylesheet" href="css/construction.css" />
 </head>
 <body>
-
-<div id="blocker">
-
-    <div id="instructions">
-        <span style="font-size:40px">Click to play</span>
-        <br />
-        (W,A,S,D = Move, SPACE = Jump, MOUSE = Look, CLICK = Shoot)
+    <div id="blocker">
+        <div id="instructions">
+            <span style="font-size:40px">Click to play</span>
+            <br />
+            (W,A,S,D = Move, SPACE = Jump, MOUSE = Look, CLICK = Shoot)
+        </div>
     </div>
+    <div id="crafting-ui">
+        <h3 style="color: white; margin-top: 0;">Crafting Table</h3>
+        <div style="display: flex; gap: 20px;">
+            <!-- Crafting Grid (3x3) -->
+            <div style="display: grid; grid-template-columns: repeat(3, 50px); gap: 10px;">
+                <div class="craft-slot" data-slot="0"></div>
+                <div class="craft-slot" data-slot="1"></div>
+                <div class="craft-slot" data-slot="2"></div>
+                <div class="craft-slot" data-slot="3"></div>
+                <div class="craft-slot" data-slot="4"></div>
+                <div class="craft-slot" data-slot="5"></div>
+                <div class="craft-slot" data-slot="6"></div>
+                <div class="craft-slot" data-slot="7"></div>
+                <div class="craft-slot" data-slot="8"></div>
+            </div>
 
-</div>
-<img id="crosshair" src="assets/crosshairNone.png">
+            <!-- Arrow and Result -->
+            <div style="display: flex; flex-direction: row; align-items: center; justify-content: center;">
+                <div style="color: white; font-size: 24px; margin-right: 15px;">&rarr;</div>
+                <div id="craft-result" style="width: 50px; height: 50px; border: 2px solid white;
+                 background-color: #666;"></div>
+            </div>
+        </div>
+        <p style="color: white; font-size: 12px; margin-top: 10px;">Press ESC to close</p>
+    </div>
+    <img id="crosshair" src="assets/crosshairNone.png">
 <script type="importmap">
     {
         "imports": {

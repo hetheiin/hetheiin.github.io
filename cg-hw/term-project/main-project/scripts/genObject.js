@@ -1,5 +1,6 @@
 import { createCube, createCylinder, createSphere, createCube2, createCylinder2, createSphere2 } from "./createPrimitive.js";
 import * as THREE from 'https://unpkg.com/three@0.125.0/build/three.module.js';
+import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
 
 const textureLoader = new THREE.TextureLoader();
 const defaultColor = 0xffffff;
@@ -368,6 +369,24 @@ export function genPoster1({ location, scale, rotation }, world, scene) {
     return {mesh:poster};
 }
 
+export function genPoster2({ location, scale, rotation }, world, scene) {
+    const textureLoader = new THREE.TextureLoader();
+    const posterTexture = textureLoader.load('assets/poster2.jpg'); // 네 포스터 이미지 경로
+
+    const posterMaterial = new THREE.MeshBasicMaterial({ map: posterTexture });
+    const posterGeometry = new THREE.PlaneGeometry(2, 3);
+
+    const poster = new THREE.Mesh(posterGeometry, posterMaterial);
+
+    poster.scale.set(scale, scale);
+    poster.rotation.set(rotation.x, rotation.y, rotation.z);
+
+    poster.position.set(location.x, location.y, location.z);
+    scene.add(poster);
+
+    return {mesh:poster};
+}
+
 export function genCobblestone({location, size, rotation}, world, scene) {
     const texture = textureLoader.load('assets/cobblestone.png');
     texture.magFilter = THREE.NearestFilter;
@@ -382,7 +401,10 @@ export function genCobblestone({location, size, rotation}, world, scene) {
             color: defaultColor,
             mass: 0},
         world, scene);
-    return {body: res.body, mesh: res.mesh, isFixed: true};
+    res.mesh.castShadow = true;
+    res.mesh.receiveShadow = true;
+    res.mesh.name = "cobblestone";
+    return {body: res.body, mesh: res.mesh, isFixed: true, isBreakable: true};
 }
 
 export function genDirt({location, size, rotation}, world, scene) {
@@ -399,7 +421,10 @@ export function genDirt({location, size, rotation}, world, scene) {
             color: defaultColor,
             mass: 0},
         world, scene);
-    return {body: res.body, mesh: res.mesh, isFixed: true};
+    res.mesh.castShadow = true;
+    res.mesh.receiveShadow = true;
+    res.mesh.name = "dirt";
+    return {body: res.body, mesh: res.mesh, isFixed: true, isBreakable: true};
 }
 
 export function genGrass({ location, size, rotation }, world, scene) {
@@ -428,8 +453,6 @@ export function genGrass({ location, size, rotation }, world, scene) {
     mesh.position.set(location.x, location.y, location.z);
     mesh.rotation.set(rotation.x, rotation.y, rotation.z);
 
-    scene.add(mesh);
-
     // 물리 바디는 createCube로 생성
     const res = createCube({
         location,
@@ -445,10 +468,14 @@ export function genGrass({ location, size, rotation }, world, scene) {
     res.mesh.geometry = geometry;
     res.mesh.material = materials;
 
+    res.mesh.castShadow = true;
+    res.mesh.receiveShadow = true;
+    res.mesh.name = "grass";
+
     return {
         body: res.body,
         mesh: res.mesh,
-        isFixed: true
+        isFixed: true, isBreakable: true
     };
 }
 
@@ -476,8 +503,8 @@ export function genCherryLog({ location, size, rotation }, world, scene) {
     const mesh = new THREE.Mesh(geometry, materials);
     mesh.position.set(location.x, location.y, location.z);
     mesh.rotation.set(rotation.x, rotation.y, rotation.z);
-
-    scene.add(mesh);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
 
     // 물리 바디는 createCube로 생성
     const res = createCube({
@@ -493,11 +520,12 @@ export function genCherryLog({ location, size, rotation }, world, scene) {
     // 기본 mesh를 우리가 만든 것으로 교체
     res.mesh.geometry = geometry;
     res.mesh.material = materials;
+    res.mesh.name = "cherry_log";
 
     return {
         body: res.body,
         mesh: res.mesh,
-        isFixed: true
+        isFixed: true, isBreakable: true
     };
 }
 
@@ -523,7 +551,11 @@ export function genCherryLeaf({location, size, rotation}, world, scene) {
         side: THREE.DoubleSide,
     });
 
-    return {body: res.body, mesh: res.mesh, isFixed: true};
+    res.mesh.castShadow = true;
+    res.mesh.receiveShadow = true;
+    res.mesh.name = "cherry_leaf";
+
+    return {body: res.body, mesh: res.mesh, isFixed: true, isBreakable: true};
 }
 
 export function genCherryPlank({location, size, rotation}, world, scene) {
@@ -540,5 +572,106 @@ export function genCherryPlank({location, size, rotation}, world, scene) {
             color: defaultColor,
             mass: 0},
         world, scene);
-    return {body: res.body, mesh: res.mesh, isFixed: true};
+
+    res.mesh.castShadow = true;
+    res.mesh.receiveShadow = true;
+    res.mesh.name = "cherry_plank";
+
+    return {body: res.body, mesh: res.mesh, isFixed: true, isBreakable: true};
+}
+
+export function genTransparentWall({ location, size, rotation }, world, scene) {
+    // 1. THREE.js Mesh 생성
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x88ccff,       // 유리 느낌의 옅은 파란색
+        transparent: true,
+        opacity: 0,          // 투명도 조절 (0 완전 투명 ~ 1 불투명)
+        roughness: 0.1,
+        metalness: 0.0,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(location.x, location.y, location.z);
+
+    if (rotation) {
+        mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+    }
+
+    scene.add(mesh);
+
+    // 2. CANNON Body 생성
+    const shape = new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
+    const body = new CANNON.Body({
+        mass: 0, // 고정된 벽
+        shape: shape,
+        position: new CANNON.Vec3(location.x, location.y, location.z),
+    });
+
+    if (rotation) {
+        const quat = new CANNON.Quaternion();
+        quat.setFromEuler(rotation.x, rotation.y, rotation.z, 'XYZ');
+        body.quaternion.copy(quat);
+    }
+
+    world.addBody(body);
+
+    return {
+        mesh: mesh,
+        body: body,
+        isFixed: true
+    };
+}
+
+export function genCraftingTable({ location, size, rotation }, world, scene) {
+    const texTop = textureLoader.load('assets/crafting_table_top.png');
+    const texSide = textureLoader.load('assets/crafting_table_side.png');
+    const texFront = textureLoader.load('assets/crafting_table_front.png');
+
+    // 픽셀 아트처럼 보이게 설정
+    for (const tex of [texTop, texSide, texFront]) {
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+    }
+
+    // 6면에 대한 재질 설정: [right, left, top, bottom, front, back]
+    const materials = [
+        new THREE.MeshLambertMaterial({ map: texSide }),  // right
+        new THREE.MeshLambertMaterial({ map: texSide }),  // left
+        new THREE.MeshLambertMaterial({ map: texTop }),   // top
+        new THREE.MeshLambertMaterial({ map: texTop }),// bottom
+        new THREE.MeshLambertMaterial({ map: texFront }),  // front
+        new THREE.MeshLambertMaterial({ map: texSide }),  // back
+    ];
+
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+    const mesh = new THREE.Mesh(geometry, materials);
+    mesh.position.set(location.x, location.y, location.z);
+    mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+
+    // 물리 바디는 createCube로 생성
+    const res = createCube({
+        location,
+        size,
+        rotation,
+        isFixed: true,
+        texture: null,  // 실제 텍스처는 우리가 수동으로 입혔으므로 null
+        color: defaultColor,
+        mass: 1
+    }, world, scene);
+
+    // 기본 mesh를 우리가 만든 것으로 교체
+    res.mesh.geometry = geometry;
+    res.mesh.material = materials;
+
+    res.mesh.castShadow = true;
+    res.mesh.receiveShadow = true;
+    res.mesh.name = "crafting_table";
+
+    return {
+        body: res.body,
+        mesh: res.mesh,
+        isFixed: true, isBreakable: true
+    };
 }
