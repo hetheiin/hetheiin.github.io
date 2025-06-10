@@ -201,7 +201,7 @@ async function init() {
 
     window.addEventListener( 'resize', onWindowResize, false );
 
-    await setupStage1(objects, playerBody, mixers, world, scene);
+    await setupStage1(objects, camera, playerBody, mixers, world, scene);
     await setupStage2(objects, playerBody, world, scene, camera, controls);
 }
 export function getPointerLockChange() {

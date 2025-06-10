@@ -18,7 +18,7 @@ import {enterToMCWorld, exitFromMCWorld, setupSimpleMCWorld} from "./setupSimple
 import * as THREE from 'https://unpkg.com/three@0.125.0/build/three.module.js';
 import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
 
-export async function setupStage1(objects, playerBody, mixers, world, scene) {
+export async function setupStage1(objects, camera, playerBody, mixers, world, scene) {
     objects.push(
         genFloor2({
             location: { x: 0, y: 0.05, z: 0 },
