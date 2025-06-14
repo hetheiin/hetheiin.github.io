@@ -3,7 +3,7 @@ import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cann
 
 export let PointerLockControls = function ( camera, cannonBody ) {
 
-    let velocityFactor = 0.40;
+    let velocityFactor = 0.60;
     let jumpVelocity = 5;
     let scope = this;
 

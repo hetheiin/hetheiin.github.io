@@ -46,6 +46,17 @@ export function genWall1({location, size, rotation}, world, scene) {
         color: defaultColor,
         mass: 0},
         world, scene);
+
+    const metalMaterial = new THREE.MeshStandardMaterial({
+        map: texture,         // 색상 텍스처
+        metalness: 0.4,         // 금속성 1.0 = 완전 금속
+        roughness: 0.6,         // 낮을수록 반짝임이 강함
+        envMapIntensity: 1.0    // 환경 맵이 있을 경우 반사 강도
+    });
+
+    res.mesh.material.dispose();
+    res.mesh.material = metalMaterial;
+
     return {body: res.body, mesh: res.mesh, isFixed: true};
 }
 
@@ -66,6 +77,17 @@ export function genWall2({location, size, rotation}, world, scene) {
             color: defaultColor,
             mass: 0},
         world, scene);
+
+    const metalMaterial = new THREE.MeshStandardMaterial({
+        map: texture,         // 색상 텍스처
+        metalness: 0.4,         // 금속성 1.0 = 완전 금속
+        roughness: 0.6,         // 낮을수록 반짝임이 강함
+        envMapIntensity: 1.0    // 환경 맵이 있을 경우 반사 강도
+    });
+
+    res.mesh.material.dispose();
+    res.mesh.material = metalMaterial;
+
     return {body: res.body, mesh: res.mesh, isFixed: true};
 }
 
@@ -171,6 +193,7 @@ export async function genCube1({location, scale, rotation}, world, scene) {
         isFixed: false,
         mass: 5*scale*scale,
     }, world, scene);
+    res.mesh.name = "cube";
     return {body: res.body, mesh: res.mesh};
 }
 
@@ -362,7 +385,7 @@ export function genPoster1({ location, scale, rotation }, world, scene) {
 
     poster.scale.set(scale, scale);
     poster.rotation.set(rotation.x, rotation.y, rotation.z);
-
+    poster.name = "minecraft_poster";
     poster.position.set(location.x, location.y, location.z);
     scene.add(poster);
 
@@ -380,7 +403,7 @@ export function genPoster2({ location, scale, rotation }, world, scene) {
 
     poster.scale.set(scale, scale);
     poster.rotation.set(rotation.x, rotation.y, rotation.z);
-
+    poster.name = "portal_poster";
     poster.position.set(location.x, location.y, location.z);
     scene.add(poster);
 
@@ -404,7 +427,7 @@ export function genCobblestone({location, size, rotation}, world, scene) {
     res.mesh.castShadow = true;
     res.mesh.receiveShadow = true;
     res.mesh.name = "cobblestone";
-    return {body: res.body, mesh: res.mesh, isFixed: true, isBreakable: true};
+    return {body: res.body, mesh: res.mesh, isFixed: true, isBreakable: false};
 }
 
 export function genDirt({location, size, rotation}, world, scene) {
@@ -503,8 +526,6 @@ export function genCherryLog({ location, size, rotation }, world, scene) {
     const mesh = new THREE.Mesh(geometry, materials);
     mesh.position.set(location.x, location.y, location.z);
     mesh.rotation.set(rotation.x, rotation.y, rotation.z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
 
     // 물리 바디는 createCube로 생성
     const res = createCube({
@@ -521,6 +542,8 @@ export function genCherryLog({ location, size, rotation }, world, scene) {
     res.mesh.geometry = geometry;
     res.mesh.material = materials;
     res.mesh.name = "cherry_log";
+    res.mesh.receiveShadow = true;
+    res.mesh.castShadow = true;
 
     return {
         body: res.body,
@@ -673,5 +696,79 @@ export function genCraftingTable({ location, size, rotation }, world, scene) {
         body: res.body,
         mesh: res.mesh,
         isFixed: true, isBreakable: true
+    };
+}
+
+export async function genWoodenStick({location, size, rotation}, world, scene) {
+    const scale = size.x;
+    const res = await createCube2({
+        location: location,
+        rotation: rotation,
+        scale: scale,
+        texture: 'assets/wooden_stick.glb',
+        isFixed: true,
+        mass: 0,
+    }, world, scene);
+    res.mesh.name = "wooden_stick";
+    res.body.collisionResponse = false;
+    return {body: res.body, mesh: res.mesh};
+}
+
+export async function genWoodenPickaxe({location, size, rotation}, world, scene) {
+    const scale = size.x;
+    const res = await createCube2({
+        location: location,
+        rotation: rotation,
+        scale: scale,
+        texture: 'assets/wooden_pickaxe.glb',
+        isFixed: true,
+        mass: 0,
+    }, world, scene);
+    res.mesh.name = "wooden_pickaxe";
+    res.body.collisionResponse = false;
+    return {body: res.body, mesh: res.mesh};
+}
+
+export async function genLazerField({location, scale, rotation}, world, scene) {
+    const res = await createCube2({
+        location: location,
+        rotation: rotation,
+        scale: scale,
+        texture: 'assets/lazer_field.glb',
+        isFixed: true,
+        mass: 0,
+    }, world, scene);
+
+    return {body: res.body, mesh: res.mesh};
+}
+
+export function genLazer({ location, size, rotation }, world, scene) {
+    // 1. Geometry
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+
+    // 2. Material (붉은색, 약간 투명하게)
+    const material = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.5,
+    });
+
+    // 3. Mesh 생성
+    const mesh = new THREE.Mesh(geometry, material);
+
+    // 4. 위치 설정
+    mesh.position.set(location.x, location.y, location.z);
+
+    // 5. 회전 설정 (radians 단위)
+    mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+
+    // 6. 씬에 추가
+    scene.add(mesh);
+    mesh.name = "lazer";
+
+    // 7. 반환
+    return {
+        mesh: mesh,
+        body: null,
     };
 }

@@ -3,7 +3,15 @@ import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cann
 import {PointerLockControls} from "./scripts/PointerLockControls.js";
 import CannonDebugger from 'https://cdn.jsdelivr.net/npm/cannon-es-debugger@1.0.0/dist/cannon-es-debugger.js';
 import {checkPickup, setupBreakingBlock, updateBreaking} from "./scripts/setupSimpleMC.js";
-import {setupInteract, setupStage2, setupClickMarker, setupStage1} from "./scripts/setupStages.js";
+import {
+    setupInteract,
+    setupStage2,
+    setupClickMarker,
+    setupStage1,
+    setupCubeEliminator,
+    eliminateCube
+} from "./scripts/setupStages.js";
+import {checkRenderPortalView, checkPortalTeleport, setupPortal} from "./scripts/setupPortal.js";
 
 // global variables
 let playerShape, playerBody, world, physicsMaterial;
@@ -22,6 +30,7 @@ let dt = 1/60;
 let mixers = [];
 
 let objects = [];
+let cubes = [];
 
 let cannonDebugger;
 let pointerlockchange;
@@ -35,6 +44,9 @@ window.onload = async () => {
     setupClickMarker(scene, camera, controls);
     setupInteract(camera, controls, objects);
     setupBreakingBlock(camera, controls, objects, scene);
+    setupCubeEliminator(objects);
+    cubes = objects.filter(obj => obj.mesh.name === "cube");
+    setupPortal(renderer, scene, camera);
     animate();
 }
 
@@ -170,7 +182,7 @@ async function init() {
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
     scene = new THREE.Scene();
-    scene.fog = new THREE.Fog( 0x9EABBC, 0, 150 );
+    scene.fog = new THREE.Fog( 0x9EABBC, 0, 100 );
 
     renderer = new THREE.WebGLRenderer();
     renderer.shadowMap.enabled = true;
@@ -183,7 +195,6 @@ async function init() {
 //  AmbientLight (은은하게 전체 조명)
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // (색상, intensity)
     scene.add(ambientLight);
-
 
     controls = new PointerLockControls( camera , playerBody );
     scene.add( controls.getObject() );
@@ -216,9 +227,11 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame( animate );
+    let deltaTime = Date.now() - time;
     if(controls.enabled){
-        world.step(dt);
+        world.step(1/60);
 
+        eliminateCube();
         for(let object of objects){
             if(object.isFixed || !object.body) continue;
             object.mesh.position.copy(object.body.position);
@@ -239,11 +252,14 @@ function animate() {
     });
 
     // cannonDebugger.update();
-    const deltaTime = Date.now() - time;
     controls.update(deltaTime);
     updateBreaking(deltaTime, camera, controls, scene, world);
     checkPickup(playerBody, world, scene);
+
+    checkPortalTeleport(playerBody, scene);
+    cubes.forEach(cube => checkPortalTeleport(cube.body, scene));
+    checkRenderPortalView(renderer, scene);
+
     renderer.render( scene, camera );
     time = Date.now();
 }
-

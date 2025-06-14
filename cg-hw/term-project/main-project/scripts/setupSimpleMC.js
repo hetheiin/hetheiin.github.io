@@ -1,6 +1,6 @@
 import * as THREE from 'https://unpkg.com/three@0.125.0/build/three.module.js';
 import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
-import {genCherryLeaf, genCherryLog, genCraftingTable, genDirt, genGrass} from "./genObject.js";
+import {genCherryLeaf, genCherryLog, genCherryPlank, genCraftingTable, genDirt, genGrass, genWoodenPickaxe, genWoodenStick} from "./genObject.js";
 import {getPointerLockChange} from "../main.js";
 
 const textureLoader = new THREE.TextureLoader();
@@ -14,17 +14,34 @@ let breakTimer = 0;
 
 let objects = [];
 
-const light = new THREE.DirectionalLight(0xffffff, 0.6); // 색상, 세기
-light.position.set(0, 10, 20); // 빛의 방향 결정
+const light = new THREE.DirectionalLight(0xffffff, 1); // 색상, 세기
+light.position.set(350, 100, 500); // 빛의 방향 결정
 light.castShadow = true;
+
+light.shadow.camera.left = -15;
+light.shadow.camera.right = 15;
+light.shadow.camera.top = 15;
+light.shadow.camera.bottom = -15;
+
+light.shadow.bias = -0.00015;
+
+const targetObject = new THREE.Object3D();
+targetObject.position.set(350, 10, 350); // 원하는 위치로 설정
+
+light.target = targetObject;
 
 let hotbarUI = null;
 let currentHotbarIndex = 0;
 let enablePlace = false;
+let enableBreak = true;
 
 const pickupDistance = 1.5; // 거리 기준
 const hotbarSize = 9;
 const hotbarObjects = Array.from({ length: hotbarSize }, () => []);
+
+
+const craftingSlots = Array.from({ length: 9 }, () => []);
+let craftingResult = null;
 
 const iconMap = {
     "cobblestone": "assets/cobblestone.png",
@@ -34,6 +51,29 @@ const iconMap = {
     "cherry_leaf": "assets/cherry_leaves.png",
     "cherry_plank": "assets/cherry_planks.png",
     "crafting_table": "assets/crafting_table_front.png",
+    "wooden_stick": "assets/stick.png",
+    "wooden_pickaxe": "assets/wooden_pickaxe.png",
+};
+
+const craftMap = {
+    "wooden_stick": [
+        null, null, null,
+        null, "cherry_plank", null,
+        null, "cherry_plank", null,
+        genWoodenStick, 4
+    ],
+    "wooden_pickaxe": [
+        "cherry_plank", "cherry_plank", "cherry_plank",
+        null, "wooden_stick", null,
+        null, "wooden_stick", null,
+        genWoodenPickaxe, 1
+    ],
+    "cherry_plank": [
+        null, null, null,
+        null, "cherry_log", null,
+        null, null, null,
+        genCherryPlank, 4
+    ],
 };
 
 for (let i = 0; i <= 9; i++) {
@@ -55,7 +95,8 @@ export function enterToMCWorld(playerBody, scene) {
     ]);
     scene.background = skybox;
     scene.add(light);
-    playerBody.position.set(347,8,347);
+    scene.add(targetObject);
+    playerBody.position.set(350,6,354);
     showHotbar();
     enablePlace = true;
 }
@@ -63,7 +104,7 @@ export function enterToMCWorld(playerBody, scene) {
 export function exitFromMCWorld(playerBody, scene) {
     scene.background = null;
     scene.remove(light);
-    playerBody.position.set(26,5,36);
+    playerBody.position.set(31,5,38);
     hideHotbar();
     enablePlace = false;
 }
@@ -170,6 +211,7 @@ export function updateBreaking(deltaTime, camera, controls, scene, world) {
 }
 
 function startBreaking(target, scene) {
+    if(!enableBreak) return;
     breaking = true;
     breakTarget = target.mesh;
     breakProgress = 0;
@@ -379,10 +421,14 @@ export function setupSimpleMCWorld(location, objects, world, scene, camera, play
     }
 
     setupHotbar();
+    setupCraftUIDragEvent(world, scene);
     window.addEventListener('click', e => {
         if(e.button !== 2) return;
         e.preventDefault();
         placeBlockOnRightClick(camera, playerBody, controls, world, scene);
+    });
+    document.getElementById("craft-result").addEventListener("click", () => {
+        applyCraftingResult(world, scene, camera);
     });
 }
 
@@ -497,6 +543,8 @@ function placeBlockOnRightClick(camera, playerBody, controls, world, scene) {
         if (intersect.object.name === "crafting_table") {
             document.onpointerlockchange = null;
             controls.enabled = false;
+            enableBreak = false;
+            cancelBreaking(scene);
             unlockPointer(); // 마우스 포인터 해제
             displayCraftUI(controls); // 제작 UI 표시
             return; // 블럭 설치는 하지 않음
@@ -559,6 +607,7 @@ function displayCraftUI(controls) {
             document.removeEventListener('keydown', escHandler);
             document.onpointerlockchange = getPointerLockChange()
             controls.enabled = true;
+            enableBreak = true;
         }
     };
     document.addEventListener('keydown', escHandler);
@@ -580,4 +629,266 @@ function unlockPointer() {
     if (document.exitPointerLock) {
         document.exitPointerLock();
     }
+}
+
+function updateCraftingSlot(index) {
+    const slot = document.querySelector(`.craft-slot[data-slot="${index}"]`);
+    const stack = craftingSlots[index];
+    slot.innerHTML = '';
+
+    if (stack.length > 0) {
+        const icon = document.createElement("img");
+        icon.src = iconMap[stack[0].mesh.name];
+        icon.classList.add("hotbar-item");
+        slot.appendChild(icon);
+
+        if (stack.length > 1) {
+            const count = document.createElement("div");
+            count.classList.add("item-count");
+            count.textContent = stack.length;
+            slot.appendChild(count);
+        }
+    }
+}
+
+function setupCraftUIDragEvent(world, scene) {
+    let draggedObject = null;
+    let draggedCount = 0;
+    let dragSource = null; // 'hotbar' | 'crafting'
+    let dragSourceIndex = -1;
+    let isRightClickDrag = false;
+
+    // 공통 드래그 초기화
+    function resetDrag() {
+        draggedObject = null;
+        draggedCount = 0;
+        dragSource = null;
+        dragSourceIndex = -1;
+        isRightClickDrag = false;
+        checkCraftingResult(world, scene);
+    }
+
+    // Crafting 슬롯 드래그 시작
+    document.querySelectorAll(".craft-slot").forEach((slot, index) => {
+        slot.addEventListener("mousedown", (e) => {
+            const stack = craftingSlots[index];
+            if (stack.length === 0) return;
+
+            e.preventDefault();
+            dragSource = 'crafting';
+            dragSourceIndex = index;
+            isRightClickDrag = (e.button === 2);
+            draggedObject = stack[0];
+            draggedCount = isRightClickDrag ? Math.ceil(stack.length / 2) : stack.length;
+        });
+
+        slot.addEventListener("mouseup", (e) => {
+            if (!draggedObject) return;
+            e.preventDefault();
+
+            const targetStack = craftingSlots[index];
+
+            if (dragSource === 'crafting') {
+                if (dragSourceIndex === index) return;
+                const sourceStack = craftingSlots[dragSourceIndex];
+                for (let i = 0; i < draggedCount && sourceStack.length > 0; i++) {
+                    targetStack.push(sourceStack.pop());
+                }
+                updateCraftingSlot(dragSourceIndex);
+                updateCraftingSlot(index);
+            } else if (dragSource === 'hotbar') {
+                const sourceStack = hotbarObjects[dragSourceIndex];
+                for (let i = 0; i < draggedCount && sourceStack.length > 0; i++) {
+                    targetStack.push(sourceStack.pop());
+                }
+                updateHotbarSlot(dragSourceIndex);
+                updateCraftingSlot(index);
+            }
+
+            resetDrag();
+        });
+
+        slot.addEventListener("contextmenu", (e) => e.preventDefault());
+    });
+
+    // Hotbar 슬롯 드래그 시작
+    document.querySelectorAll(".hotbar-slot").forEach((slot, index) => {
+        slot.addEventListener("mousedown", (e) => {
+            const stack = hotbarObjects[index];
+            if (stack.length === 0) return;
+
+            e.preventDefault();
+            dragSource = 'hotbar';
+            dragSourceIndex = index;
+            isRightClickDrag = (e.button === 2);
+            draggedObject = stack[0];
+            draggedCount = isRightClickDrag ? Math.ceil(stack.length / 2) : stack.length;
+        });
+
+        slot.addEventListener("mouseup", (e) => {
+            if (!draggedObject) return;
+            e.preventDefault();
+
+            const targetStack = hotbarObjects[index];
+
+            if (dragSource === 'crafting') {
+                const sourceStack = craftingSlots[dragSourceIndex];
+                for (let i = 0; i < draggedCount && sourceStack.length > 0; i++) {
+                    targetStack.push(sourceStack.pop());
+                }
+                updateCraftingSlot(dragSourceIndex);
+                updateHotbarSlot(index);
+            }
+
+            resetDrag();
+        });
+
+        slot.addEventListener("contextmenu", (e) => e.preventDefault());
+    });
+}
+
+async function checkCraftingResult(world, scene) {
+    const currentPattern = craftingSlots.map(slot => slot.length > 0 ? slot[0].mesh.name : null);
+
+    let found = false;
+    craftingResult = null;
+
+    for (const [key, pattern] of Object.entries(craftMap)) {
+        const expectedPattern = pattern.slice(0, 9);
+        const genFunction = pattern[9];
+        const quantity = pattern[10] || 1;
+
+        const matches = expectedPattern.every((expected, i) => expected === currentPattern[i]);
+
+        if (matches) {
+            // 기존 결과 제거
+            if (Array.isArray(craftingResult)) {
+                craftingResult.forEach(obj => {
+                    scene.remove(obj.mesh);
+                    if(obj.body) world.removeBody(obj.body);
+                });
+            }
+
+            // 결과 생성
+            const resultArray = [];
+            for (let i = 0; i < quantity; i++) {
+                const obj = await genFunction(
+                    { location: { x: 0, y: 0, z: 0 }, size: { x: 1, y: 1, z: 1 }, rotation: { x: 0, y: 0, z: 0 } },
+                    world,
+                    scene
+                );
+                scene.remove(obj.mesh);
+                if(obj.body) world.removeBody(obj.body);
+                resultArray.push(obj);
+            }
+
+            craftingResult = resultArray;
+
+            // UI에 첫 번째 아이콘만 표시
+            const iconSrc = iconMap[resultArray[0].mesh.name];
+            if (iconSrc) {
+                const img = document.createElement("img");
+                img.src = iconSrc;
+                img.style.width = "100%";
+                img.style.height = "100%";
+                img.style.imageRendering = "pixelated";
+
+                const countDiv = document.createElement("div");
+                countDiv.className = "item-count";
+                countDiv.textContent = quantity;
+
+                const resultDiv = document.getElementById("craft-result");
+                resultDiv.innerHTML = "";
+                resultDiv.appendChild(img);
+                resultDiv.appendChild(countDiv);
+            }
+
+            found = true;
+            break;
+        }
+    }
+
+    // 일치하는 조합 없음 → UI 초기화
+    if (!found) {
+        craftingResult = null;
+        const resultDiv = document.getElementById("craft-result");
+        resultDiv.innerHTML = "";
+    }
+}
+
+function applyCraftingResult(world, scene, camera) {
+    if (!craftingResult || craftingResult.length === 0) return;
+
+    // hotbar에 넣을 공간 찾기
+    const firstObj = craftingResult[0];
+    const targetIndex = hotbarObjects.findIndex(arr =>
+        arr.length > 0 && arr[0].mesh.name === firstObj.mesh.name
+    );
+
+    let emptyIndex = -1;
+    if (targetIndex === -1) {
+        emptyIndex = hotbarObjects.findIndex(arr => arr.length === 0);
+        if (emptyIndex === -1) return; // 빈 공간 없음, crafting 취소
+    }
+
+    // hotbarObjects에 추가
+    const insertIndex = (targetIndex !== -1) ? targetIndex : emptyIndex;
+    craftingResult.forEach(obj => hotbarObjects[insertIndex].push(obj));
+    updateHotbarSlot(insertIndex); // UI 반영
+
+    // craftingSlots에서 각 slot의 첫 번째 object 제거
+    for (let i = 0; i < craftingSlots.length; i++) {
+        if (craftingSlots[i].length > 0) {
+            const obj = craftingSlots[i].shift();
+
+            scene.remove(obj.mesh);
+            if(obj.body) world.removeBody(obj.body);
+
+            // DOM도 제거
+            const slotElem = document.querySelector(`.craft-slot[data-slot="${i}"]`);
+            if (slotElem) {
+                const img = slotElem.querySelector("img");
+                const count = slotElem.querySelector(".item-count");
+
+                if (craftingSlots[i].length > 0) {
+                    const nextObj = craftingSlots[i][0];
+                    if (img) img.src = iconMap[nextObj.mesh.name];
+                    if (count) count.textContent = craftingSlots[i].length;
+                } else {
+                    slotElem.innerHTML = "";
+                }
+            }
+        }
+    }
+
+    if(firstObj.mesh.name === "wooden_pickaxe") {
+        getPickaxe(firstObj, camera);
+    }
+
+    // 결과 제거
+    craftingResult = null;
+    const resultDiv = document.getElementById("craft-result");
+    resultDiv.innerHTML = "";
+
+    // crafting UI 다시 검사
+    checkCraftingResult(world, scene);
+}
+
+function getPickaxe(res, camera) {
+
+    // 3. 메쉬를 씬에서 계속 유지하되 카메라 자식으로 만들어 고정
+    if (res.mesh) {
+        // 월드 좌표계에서 카메라 상대 좌표로 변환
+        camera.add(res.mesh); // 카메라의 자식으로 만들기
+
+        // 위치 설정: 카메라 기준 오른쪽 아래쪽 앞으로 약간
+        res.mesh.position.set(-0.4, -0.3, -0.6); // 필요시 조정
+
+        // 회전 초기화 또는 고정 회전 설정
+        res.mesh.rotation.set(0, Math.PI/2, 0); // 필요시 조정
+        res.mesh.scale.set(0.5, 0.5, 0.5);
+    }
+    objects.forEach(obj => {
+       if(obj.mesh.name === "cobblestone") obj.isBreakable = true;
+    });
 }

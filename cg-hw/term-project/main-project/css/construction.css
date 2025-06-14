@@ -110,6 +110,7 @@ body {
     image-rendering: pixelated;
     background-size: cover;
     background-position: center;
+    position: relative;
 }
 
 #crafting-ui {
@@ -123,4 +124,19 @@ body {
     padding: 20px;
     z-index: 9999;
     font-family: monospace;
+}
+
+.item-count {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
+    text-shadow:
+            1px 1px 0px black,
+            -1px 1px 0px black,
+            1px -1px 0px black,
+            -1px -1px 0px black;
+    pointer-events: none;
 }

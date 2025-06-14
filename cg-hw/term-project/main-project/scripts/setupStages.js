@@ -5,7 +5,7 @@ import {
     genConeLight, genCraftingTable,
     genCube1, genDirt, genDoor1,
     genFloor1,
-    genFloor2, genGrass, genGunPlate,
+    genFloor2, genGrass, genGunPlate, genLazer, genLazerField,
     genLight1,
     genPlate1, genPortalGun, genPoster1, genPoster2, genTransparentWall,
     genWall1,
@@ -17,6 +17,9 @@ import {
 import {enterToMCWorld, exitFromMCWorld, setupSimpleMCWorld} from "./setupSimpleMC.js";
 import * as THREE from 'https://unpkg.com/three@0.125.0/build/three.module.js';
 import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
+
+let cubes;
+let lazer;
 
 export async function setupStage1(objects, camera, playerBody, mixers, world, scene) {
     objects.push(
@@ -153,15 +156,27 @@ export async function setupStage1(objects, camera, playerBody, mixers, world, sc
 
     objects.push(
         await genLight1({
-            location: { x: 26, y: 8, z: 8 },
+            location: { x: 27, y: 8, z: 0 },
             scale: 1,
             rotation: { x: Math.PI, y: 0, z: 0 },
         }, world, scene)
     );
 
-    const pointLight2 = new THREE.PointLight(0xffffff, 2.5, 10); // (색상, 밝기, 거리)
-    pointLight2.position.set(26, 7.5, 8);
+    const pointLight2 = new THREE.PointLight(0xffffff, 1.2, 10); // (색상, 밝기, 거리)
+    pointLight2.position.set(27, 7.1, 0);
     scene.add(pointLight2);
+
+    objects.push(
+        await genLight1({
+            location: { x: 26, y: 8, z: 16 },
+            scale: 1,
+            rotation: { x: Math.PI, y: 0, z: 0 },
+        }, world, scene)
+    );
+
+    const pointLight3 = new THREE.PointLight(0xffffff, 1.2, 10); // (색상, 밝기, 거리)
+    pointLight3.position.set(26, 7.1, 16);
+    scene.add(pointLight3);
 
     genConeLight({
         location: { x: 8, y: -1, z: 0 },
@@ -180,7 +195,10 @@ export async function setupStage1(objects, camera, playerBody, mixers, world, sc
 
     objects.push(genWall2({location:{x:26, y:6.1, z:24}, size:{x:4, y:4, z:4}, rotation:{x:0, y:0, z:0}}, world, scene));
 
-    objects.push(await genCube1({location:{x:26, y:6.1, z:16}, scale:1, rotation:{x:0, y:0, z:0}}, world, scene));
+    // objects.push(await genCube1({location:{x:26, y:6.1, z:16}, scale:1, rotation:{x:0, y:0, z:0}}, world, scene));
+
+    objects.push(await genLazerField({location:{x:26, y:7.8, z:8}, scale:4, rotation:{x:0, y:0, z:Math.PI}}, world, scene));
+    objects.push(genLazer({location:{x:26, y:4.1, z:8}, size:{x:4,y:8,z:0.1}, rotation:{x:0, y:0, z:0}}, world, scene));
 }
 
 export async function setupStage2(objects, playerBody, world, scene, camera, controls) {
@@ -253,9 +271,6 @@ export async function setupStage2(objects, playerBody, world, scene, camera, con
     }
 
     let res3 = genPoster1({location:{x:31.95, y:4, z:38}, scale:2, rotation:{x:0,y:-Math.PI/2,z:0}}, world, scene);
-    res3.interact = () => {
-        enterToMCWorld(playerBody, scene);
-    };
     objects.push(res3);
     setupSimpleMCWorld({x:345.5, y:2.5, z:345.5}, objects, world, scene, camera, playerBody, controls);
 
@@ -267,9 +282,6 @@ export async function setupStage2(objects, playerBody, world, scene, camera, con
     genTransparentWall({location:{x: 350, y:9, z:344}, size:{x:10, y:14, z:2}, rotation:{x:0,y:0,z:0}}, world, scene);
 
     let res4 = genPoster2({location:{x:350, y:7, z:354.95}, scale:2, rotation:{x:0,y:Math.PI,z:0}}, world, scene);
-    res4.interact = () => {
-        exitFromMCWorld(playerBody, scene);
-    };
     objects.push(res4);
 
     objects.push(genCobblestone({location:{x:28-2/3,y:0.1+2/3,z:49}, size:{x:4/3, y:4/3, z:4/3}, rotation:{x:0, y:0, z:0}}, world, scene));
@@ -470,5 +482,19 @@ export function setupClickMarker(scene, camera, controls) {
 
             console.log('🔴 Hit:', hit.object.name || hit.object.type, '@', hit.point.x, hit.point.y, hit.point.z);
         }
+    });
+}
+
+export function setupCubeEliminator(objects) {
+    cubes = objects.filter(obj => obj.mesh.name === "cube");
+    lazer = objects.filter(obj => obj.mesh.name === "lazer");
+}
+
+export function eliminateCube() {
+    cubes.forEach(cube => {
+        const cubeBox = new THREE.Box3().setFromObject(cube.mesh);
+        const lazerBox = new THREE.Box3().setFromObject(lazer[0].mesh);
+
+        if(cubeBox.intersectsBox(lazerBox)) cube.body.position.set(30, 7, -4);
     });
 }
