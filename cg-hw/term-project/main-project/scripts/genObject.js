@@ -118,6 +118,7 @@ export function genWall3({location, size, rotation}, world, scene) {
 
     res.mesh.material.dispose();
     res.mesh.material = metalMaterial;
+    res.mesh.name = "wall_black";
 
     return {body: res.body, mesh: res.mesh, isFixed: true};
 }
@@ -149,6 +150,7 @@ export function genWall4({location, size, rotation}, world, scene) {
 
     res.mesh.material.dispose();
     res.mesh.material = metalMaterial;
+    res.mesh.name = "wall_black";
 
     return {body: res.body, mesh: res.mesh, isFixed: true};
 }
@@ -180,6 +182,7 @@ export function genWall5({location, size, rotation}, world, scene) {
 
     res.mesh.material.dispose();
     res.mesh.material = metalMaterial;
+    res.mesh.name = "wall_black";
 
     return {body: res.body, mesh: res.mesh, isFixed: true};
 }
@@ -269,6 +272,7 @@ export function genFloor2({location, size, rotation}, world, scene) {
 
     res.mesh.material.dispose();
     res.mesh.material = metalMaterial;
+    res.mesh.name = "wall_black";
 
     return {body: res.body, mesh: res.mesh, isFixed: true};
 }

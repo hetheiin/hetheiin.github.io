@@ -55,6 +55,7 @@ export function setupPortal(renderer, scene, camera) {
 
         if (intersects.length > 0) {
             const intersect = intersects[0];
+            if(intersect.object.name === "wall_black") return;
             const portalGeometry = new THREE.PlaneGeometry(2, 3);
             const portalMaterial = new THREE.MeshBasicMaterial({
                 color: event.key === "z" ? 0x00a8ff : 0xff6b00, // 좌클릭: 파란색, 우클릭: 주황색
