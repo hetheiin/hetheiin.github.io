@@ -5,13 +5,13 @@ import {genCube1, genRubixsCube, genLazer2} from "./genObject.js";
 
 export async function setupToyStory(objects, playerBody, world, scene, camera, controls) {
 
-    // // Point Light (그림자 포함)
-    // const pointLight = new THREE.PointLight(0xffffff, 0.5, 50);
-    // pointLight.position.set(20, 50, 0);
-    // pointLight.castShadow = true;
-    // pointLight.shadow.mapSize.width = 512;
-    // pointLight.shadow.mapSize.height = 512;
-    // scene.add(pointLight);
+    // Point Light (그림자 포함)
+    const pointLight = new THREE.PointLight(0xffffff, 0.5, 50);
+    pointLight.position.set(20, 50, 0);
+    pointLight.castShadow = true;
+    pointLight.shadow.mapSize.width = 512;
+    pointLight.shadow.mapSize.height = 512;
+    scene.add(pointLight);
 
     // 바닥 생성
     const loader = new THREE.TextureLoader();

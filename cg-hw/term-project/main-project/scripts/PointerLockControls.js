@@ -140,7 +140,8 @@ export let PointerLockControls = function ( camera, cannonBody ) {
 
         if ( scope.enabled === false ) return;
 
-        delta *= 0.1;
+        // delta *= 0.1;
+        delta = 0.35;
 
         inputVelocity.set(0,0,0);
 
