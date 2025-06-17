@@ -262,7 +262,7 @@ function animate() {
     controls.update(deltaTime);
     updateBreaking(deltaTime, camera, controls, scene, world);
     checkPickup(playerBody, world, scene);
-    eliminateCube();
+    // eliminateCube();
 
     checkPortalTeleport(playerBody, scene);
     cubes.forEach(cube => checkPortalTeleport(cube.body, scene));
