@@ -200,6 +200,32 @@ export async function genCube1({location, scale, rotation}, world, scene) {
     return {body: res.body, mesh: res.mesh};
 }
 
+export async function genSmallRoom({location, scale, rotation}, world, scene) {
+    const res = await createCube2({
+        location: location,
+        rotation: rotation,
+        scale: scale,
+        texture: 'assets/smallRoom.glb',
+        isFixed: true,
+        mass: 5*scale*scale,
+    }, world, scene);
+    res.mesh.name = "cube";
+    return {body: res.body, mesh: res.mesh};
+}
+
+export async function genRubixsCube({location, scale, rotation}, world, scene) {
+    const res = await createCube2({
+        location: location,
+        rotation: rotation,
+        scale: scale,
+        texture: 'assets/rubixsCube.glb',
+        isFixed: false,
+        mass: 5*scale*scale,
+    }, world, scene);
+    res.mesh.name = "cube";
+    return {body: res.body, mesh: res.mesh};
+}
+
 export async function genLight1({location, scale, rotation}, world, scene) {
     const res = await createCube2({
         location: location,
@@ -773,6 +799,43 @@ export function genLazer({ location, size, rotation }, world, scene) {
     // 7. 반환
     return {
         mesh: mesh,
+        body: null,
+    };
+}
+
+export function genLazer2({ location, size, rotation }, world, scene) {
+    // 1. Geometry
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z);
+
+    // 2. First Material (포탈용 흰색)
+    const material1 = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.01,
+    });
+
+    // 3. First Mesh
+    const mesh1 = new THREE.Mesh(geometry, material1);
+    mesh1.position.set(location.x, location.y, location.z);
+    mesh1.rotation.set(rotation.x, rotation.y, rotation.z);
+    scene.add(mesh1);
+
+    // 4. Second Material (디버그용 다른 색깔)
+    const material2 = new THREE.MeshBasicMaterial({
+        color: 0x00ff00, // 원하는 색으로 변경 가능
+        transparent: true,
+        opacity: 0.3,
+    });
+
+    // 5. Second Mesh (겹치는 위치/회전 동일)
+    const mesh2 = new THREE.Mesh(geometry.clone(), material2);
+    mesh2.position.set(location.x, location.y, location.z);
+    mesh2.rotation.set(rotation.x, rotation.y, rotation.z);
+    scene.add(mesh2);
+
+    // 6. 반환
+    return {
+        mesh: mesh1,   // 주 메쉬는 원래대로 반환
         body: null,
     };
 }

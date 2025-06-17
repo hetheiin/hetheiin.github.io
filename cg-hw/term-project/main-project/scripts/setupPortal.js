@@ -15,15 +15,31 @@ let portalCamera = new THREE.PerspectiveCamera(75, 2/3, 0.1, 1000); // 포탈 �
 let portalToMC = [false, false];
 let MCToPortal = [false, false];
 
-export function checkRenderPortalView(renderer, scene) {
+export function checkRenderPortalView(renderer, scene, camera) {
     // --- 포탈 뷰 렌더링 ---
     if (bluePortal && orangePortal) {
-        renderPortalView(renderer, scene, bluePortal, orangePortal, portalRenderTargetA, 1);
-        renderPortalView(renderer, scene, orangePortal, bluePortal, portalRenderTargetB, 1);
+        // 연결된 경우: 투명도 0, 색상 없이 내부에만 렌더타겟 텍스처
+        setPortalTransparent(bluePortal);
+        setPortalTransparent(orangePortal);
+        renderPortalView(renderer, scene, bluePortal, orangePortal, portalRenderTargetA, 1, camera);
+        renderPortalView(renderer, scene, orangePortal, bluePortal, portalRenderTargetB, 1, camera);
+    } else {
+        // 연결 안 된 경우: 채워진 포탈로
+        setPortalFill(bluePortal, 0x00a8ff);
+        setPortalFill(orangePortal, 0xff6b00);
     }
 }
 
 export function setupPortal(renderer, scene, camera) {
+
+    document.addEventListener('keypress', event => {
+        if(!(event.key === "c")) return;
+        if(bluePortal) scene.remove(bluePortal);
+        if(orangePortal) scene.remove(orangePortal);
+        bluePortal = null;
+        orangePortal = null;
+    })
+
     // 포탈 설치 이벤트
     document.addEventListener('keypress', (event) => {
         if(!(event.key === "z" || event.key === "x"))
@@ -58,10 +74,11 @@ export function setupPortal(renderer, scene, camera) {
             if(intersect.object.name === "wall_black") return;
             const portalGeometry = new THREE.PlaneGeometry(2, 3);
             const portalMaterial = new THREE.MeshBasicMaterial({
-                color: event.key === "z" ? 0x00a8ff : 0xff6b00, // 좌클릭: 파란색, 우클릭: 주황색
+                color: event.key === "z" ? 0x00a8ff : 0xff6b00,
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.8,
+                // map: null  // map은 나중에 동적으로 할당됨
             });
 
             const portal = new THREE.Mesh(portalGeometry, portalMaterial);
@@ -147,20 +164,22 @@ export function checkPortalTeleport(body, scene) {
 
         if (distToBlue < 1.5) {
             // 주황 포탈로 텔레포트
-            const exitPos = orangePortalData.position.clone();
+            const entryNormal = bluePortalData.normal.clone().normalize();
             const exitNormal = orangePortalData.normal.clone().normalize();
-
-            // 출구 위치: 포탈 앞쪽으로 약간 이동
+            const exitPos = orangePortalData.position.clone();
             exitPos.addScaledVector(exitNormal, 2.5);
             body.position.copy(exitPos);
 
-            // 포탈 통과 전에 속도 크기 구함
-            const preVelocity = new THREE.Vector3(body.velocity.x, body.velocity.y, body.velocity.z);
-            const speed = preVelocity.length(); // 스칼라 크기만 추출
+            // 운동량(velocity) 회전
+            const velocity = new THREE.Vector3(body.velocity.x, body.velocity.y, body.velocity.z);
+            const rotationQuat = new THREE.Quaternion().setFromUnitVectors(entryNormal, exitNormal);
+            velocity.applyQuaternion(rotationQuat);
+            body.velocity.set(velocity.x, velocity.y, velocity.z);
 
-            // 속도를 포탈 normal 방향으로 재설정 (크기는 유지)
-            const newVelocity = exitNormal.clone().multiplyScalar(speed);
-            body.velocity.set(newVelocity.x, newVelocity.y, newVelocity.z);
+            // 시야 회전 (controls.getObject())
+            if (typeof controls !== 'undefined' && controls.getObject) {
+                controls.getObject().quaternion.premultiply(rotationQuat);
+            }
 
             if(portalToMC[1]) {
                 enterToMCWorld(body, scene);
@@ -170,20 +189,22 @@ export function checkPortalTeleport(body, scene) {
         }
         if (distToOrange < 1.5) {
             // 파란 포탈로 텔레포트
-            const exitPos = bluePortalData.position.clone();
+            const entryNormal = orangePortalData.normal.clone().normalize();
             const exitNormal = bluePortalData.normal.clone().normalize();
-
-            // 출구 위치: 포탈 앞쪽으로 약간 이동
+            const exitPos = bluePortalData.position.clone();
             exitPos.addScaledVector(exitNormal, 2.5);
             body.position.copy(exitPos);
 
-            // 포탈 통과 전 속도 크기 계산
-            const preVelocity = new THREE.Vector3(body.velocity.x, body.velocity.y, body.velocity.z);
-            const speed = preVelocity.length(); // 속도 크기만 추출
+            // 운동량(velocity) 회전
+            const velocity = new THREE.Vector3(body.velocity.x, body.velocity.y, body.velocity.z);
+            const rotationQuat = new THREE.Quaternion().setFromUnitVectors(entryNormal, exitNormal);
+            velocity.applyQuaternion(rotationQuat);
+            body.velocity.set(velocity.x, velocity.y, velocity.z);
 
-            // 속도를 출구 포탈 normal 방향으로 재설정 (크기 유지)
-            const newVelocity = exitNormal.multiplyScalar(speed);
-            body.velocity.set(newVelocity.x, newVelocity.y, newVelocity.z);
+            // 시야 회전 (controls.getObject())
+            if (typeof controls !== 'undefined' && controls.getObject) {
+                controls.getObject().quaternion.premultiply(rotationQuat);
+            }
 
             if(portalToMC[0]) {
                 enterToMCWorld(body, scene);
@@ -194,28 +215,82 @@ export function checkPortalTeleport(body, scene) {
     }
 }
 
-function renderPortalView(renderer, scene, entryPortal, exitPortal, renderTarget, recursion = 0) {
+function renderPortalView(renderer, scene, entryPortal, exitPortal, renderTarget, recursion = 0, camera) {
     if (!entryPortal || !exitPortal || recursion > 2) return;
 
-    // 1. 출구 포탈의 위치/방향에 맞게 카메라 설정
-    portalCamera.position.copy(exitPortal.position);
-    portalCamera.quaternion.copy(exitPortal.quaternion);
+    // 플레이어 오브젝트 가져오기
+    const player = scene.getObjectByName("playerBody");
+    if (!player) return;
 
-    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(exitPortal.quaternion);
-    portalCamera.position.addScaledVector(normal, 0.05);
+    // 1. 플레이어의 월드 위치
+    const playerPosition = player.getWorldPosition(new THREE.Vector3());
+
+    // 2. 입구 포탈 기준 상대 위치 벡터
+    const relativeVec = playerPosition.clone().sub(entryPortal.position);
+
+    // 3. 입구 포탈 로컬로 변환
+    const entryInvQuat = entryPortal.quaternion.clone().invert();
+    relativeVec.applyQuaternion(entryInvQuat);
+
+    // 4. 출구 포탈 회전(법선 포함)으로 변환
+    relativeVec.applyQuaternion(exitPortal.quaternion);
+
+    // 5. 방향 반전
+    relativeVec.multiplyScalar(1);
+
+    // 6. 카메라 위치는 출구 포탈 위치(혹은 약간 앞쪽)
+    const portalNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(exitPortal.quaternion);
+    portalCamera.position.copy(exitPortal.position).addScaledVector(portalNormal, 0.05);
+
+    // 7. 카메라가 뒤집힌 벡터 방향을 바라보게
+    portalCamera.up.set(0, 1, 0);
+    portalCamera.lookAt(portalCamera.position.clone().add(relativeVec));
+
+    // 카메라 파라미터 동기화
+    if (camera) {
+        portalCamera.fov = camera.fov;
+        portalCamera.aspect = camera.aspect;
+        portalCamera.near = camera.near;
+        portalCamera.far = camera.far;
+        portalCamera.updateProjectionMatrix();
+    }
 
     const wasVisible = entryPortal.visible;
     entryPortal.visible = false;
 
-    // 2. 렌더타겟에 렌더링
     renderer.setRenderTarget(renderTarget);
-    renderer.clear(); // 렌더타겟 초기화 (안하면 잔상 생길 수 있음)
+    renderer.clear();
     renderer.render(scene, portalCamera);
     renderer.setRenderTarget(null);
 
     entryPortal.visible = wasVisible;
 
-    // 3. 입구 포탈 머티리얼에 텍스처 적용
     entryPortal.material.map = renderTarget.texture;
     entryPortal.material.needsUpdate = true;
+}
+
+function setPortalTransparent(portal) {
+    if (!portal) return;
+    portal.material = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 1.0,
+        map: portal.material.map // 렌더타겟 텍스처는 renderPortalView에서 할당됨
+    });
+    portal.material.needsUpdate = true;
+}
+
+function setPortalFill(portal, color) {
+    if (!portal) return;
+    // 연결 안 된 경우만 색상 채우기, map은 null
+    portal.material = new THREE.MeshBasicMaterial({
+        color: color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.8,
+        wireframe: false,
+        map: null
+    });
+    portal.material.needsUpdate = true;
 }

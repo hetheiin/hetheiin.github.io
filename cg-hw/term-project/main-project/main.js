@@ -5,11 +5,13 @@ import CannonDebugger from 'https://cdn.jsdelivr.net/npm/cannon-es-debugger@1.0.
 import {checkPickup, setupBreakingBlock, updateBreaking} from "./scripts/setupSimpleMC.js";
 import {
     setupInteract,
-    setupStage2,
     setupClickMarker,
-    setupStage1,
     setupCubeEliminator,
-    eliminateCube
+    eliminateCube,
+    setupStage1,
+    setupStage2,
+    setupStage3,
+    setupEnd
 } from "./scripts/setupStages.js";
 import {checkRenderPortalView, checkPortalTeleport, setupPortal} from "./scripts/setupPortal.js";
 
@@ -41,11 +43,11 @@ window.onload = async () => {
     initCannon();
     await init();
     cannonDebugger = CannonDebugger(scene, world);
-    setupClickMarker(scene, camera, controls);
+    // setupClickMarker(scene, camera, controls);
     setupInteract(camera, controls, objects);
     setupBreakingBlock(camera, controls, objects, scene);
     setupCubeEliminator(objects);
-    cubes = objects.filter(obj => obj.mesh.name === "cube");
+    cubes = objects.filter(obj => obj && obj.mesh && obj.mesh.name === "cube");
     setupPortal(renderer, scene, camera);
     animate();
 }
@@ -197,6 +199,7 @@ async function init() {
     scene.add(ambientLight);
 
     controls = new PointerLockControls( camera , playerBody );
+    controls.getObject().name = "playerBody";
     scene.add( controls.getObject() );
 
     // floor
@@ -214,10 +217,14 @@ async function init() {
 
     await setupStage1(objects, camera, playerBody, mixers, world, scene);
     await setupStage2(objects, playerBody, world, scene, camera, controls);
+    await setupStage3(objects, playerBody, world, scene, camera, controls, mixers);
+    await setupEnd(objects, playerBody, world, scene, camera, controls);
 }
 export function getPointerLockChange() {
     return pointerlockchange;
 }
+
+export { controls };
 
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -255,10 +262,11 @@ function animate() {
     controls.update(deltaTime);
     updateBreaking(deltaTime, camera, controls, scene, world);
     checkPickup(playerBody, world, scene);
+    eliminateCube();
 
     checkPortalTeleport(playerBody, scene);
     cubes.forEach(cube => checkPortalTeleport(cube.body, scene));
-    checkRenderPortalView(renderer, scene);
+    checkRenderPortalView(renderer, scene, camera);
 
     renderer.render( scene, camera );
     time = Date.now();

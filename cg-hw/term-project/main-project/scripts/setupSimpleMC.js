@@ -3,8 +3,13 @@ import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cann
 import {genCherryLeaf, genCherryLog, genCherryPlank, genCraftingTable, genDirt, genGrass, genWoodenPickaxe, genWoodenStick} from "./genObject.js";
 import {getPointerLockChange} from "../main.js";
 
+let world_global;
+let scene_global;
+
 const textureLoader = new THREE.TextureLoader();
 const destroyStages = [];
+
+let isDone = false;
 
 let breaking = false;
 let breakTarget = null;
@@ -107,6 +112,15 @@ export function exitFromMCWorld(playerBody, scene) {
     playerBody.position.set(31,5,38);
     hideHotbar();
     enablePlace = false;
+    if(isDone) {
+        for (let i = objects.length - 1; i >= 0; i--) {
+            if (objects[i].inMC) {
+                scene.remove(objects[i].mesh);
+                world_global.removeBody(objects[i].body);
+                objects.splice(i, 1);
+            }
+        }
+    }
 }
 
 function showHotbar() {
@@ -338,6 +352,10 @@ export function setupSimpleMCWorld(location, objects, world, scene, camera, play
     const worldDepth = 10;
     const blockSize = { x: 1, y: 1, z: 1 };
     const baseHeight = 1;
+    let obj;
+
+    world_global = world;
+    scene_global = scene;
 
     const heightMap = [
         [3, 3, 3, 3, 3, 3, 3, 3, 3, 2],
@@ -363,15 +381,21 @@ export function setupSimpleMCWorld(location, objects, world, scene, camera, play
                 };
 
                 if (y < height - 1) {
-                    objects.push(genDirt({ location: blockLocation, size: blockSize, rotation: { x: 0, y: 0, z: 0 } }, world, scene));
+                    obj = genDirt({ location: blockLocation, size: blockSize, rotation: { x: 0, y: 0, z: 0 } }, world, scene);
+                    obj.inMC = true;
+                    objects.push(obj);
                 } else {
-                    objects.push(genGrass({ location: blockLocation, size: blockSize, rotation: { x: 0, y: 0, z: 0 } }, world, scene));
+                    obj = genGrass({ location: blockLocation, size: blockSize, rotation: { x: 0, y: 0, z: 0 } }, world, scene);
+                    obj.inMC = true;
+                    objects.push(obj);
                 }
             }
         }
     }
 
-    objects.push(genCraftingTable({ location: {x:location.x+3,y:location.y+2,z:location.z+5}, size: {x:1,y:1,z:1}, rotation: { x: 0, y: 0, z: 0 } }, world, scene));
+    obj = genCraftingTable({ location: {x:location.x+3,y:location.y+2,z:location.z+5}, size: {x:1,y:1,z:1}, rotation: { x: 0, y: 0, z: 0 } }, world, scene);
+    obj.inMC = true;
+    objects.push(obj);
 
     // 2. 나무 생성
     const treeX = 6;
@@ -382,7 +406,7 @@ export function setupSimpleMCWorld(location, objects, world, scene, camera, play
 
     // 줄기
     for (let y = 0; y < treeHeight; y++) {
-        objects.push(genCherryLog({
+        obj = genCherryLog({
             location: {
                 x: location.x + treeX,
                 y: treeBaseY + y,
@@ -390,7 +414,9 @@ export function setupSimpleMCWorld(location, objects, world, scene, camera, play
             },
             size: blockSize,
             rotation: { x: 0, y: 0, z: 0 },
-        }, world, scene));
+        }, world, scene);
+        obj.inMC = true;
+        objects.push(obj);
     }
 
     // 잎
@@ -407,7 +433,7 @@ export function setupSimpleMCWorld(location, objects, world, scene, camera, play
             for (let dz = -radius; dz <= radius; dz++) {
                 if (skipCenter && dx === 0 && dz === 0) continue;
 
-                objects.push(genCherryLeaf({
+                obj = genCherryLeaf({
                     location: {
                         x: location.x + treeX + dx,
                         y: leafY,
@@ -415,7 +441,9 @@ export function setupSimpleMCWorld(location, objects, world, scene, camera, play
                     },
                     size: blockSize,
                     rotation: { x: 0, y: 0, z: 0 },
-                }, world, scene));
+                }, world, scene);
+                obj.inMC = true;
+                objects.push(obj);
             }
         }
     }
@@ -583,6 +611,7 @@ function placeBlockOnRightClick(camera, playerBody, controls, world, scene) {
 
         // objects 배열에 다시 등록
         placedObj.isDropped = false;
+        placedObj.inMC = true;
         objects.push(placedObj);
 
         // hotbar UI 갱신
@@ -889,6 +918,7 @@ function getPickaxe(res, camera) {
         res.mesh.scale.set(0.5, 0.5, 0.5);
     }
     objects.forEach(obj => {
-       if(obj.mesh.name === "cobblestone") obj.isBreakable = true;
+        if(obj.mesh && obj.mesh.name && obj.mesh.name === "cobblestone") obj.isBreakable = true;
     });
+    isDone = true;
 }
