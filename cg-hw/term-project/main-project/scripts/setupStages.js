@@ -759,10 +759,10 @@ export function setupCubeEliminator(objects) {
 }
 
 export function eliminateCube() {
-    // cubes.forEach(cube => {
-    //     const cubeBox = new THREE.Box3().setFromObject(cube.mesh);
-    //     const lazerBox = new THREE.Box3().setFromObject(lazer[0].mesh);
+    cubes.forEach(cube => {
+        const cubeBox = new THREE.Box3().setFromObject(cube.mesh);
+        const lazerBox = new THREE.Box3().setFromObject(lazer[0].mesh);
 
-    //     if(cubeBox.intersectsBox(lazerBox)) cube.body.position.set(30, 7, -4);
-    // });
+        if(cubeBox.intersectsBox(lazerBox)) cube.body.position.set(30, 7, -4);
+    });
 }

@@ -104,7 +104,7 @@ export function setupPortal(renderer, scene, camera) {
 
             // 포탈 위치를 표면에서 약간 띄움
             const portalPosition = intersect.point.clone();
-            portalPosition.addScaledVector(normal, 0.01);
+            portalPosition.addScaledVector(normal, 0.03);
             portal.position.copy(portalPosition);
             portal.quaternion.copy(portalQuaternion);
 
